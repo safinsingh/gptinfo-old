@@ -8,9 +8,9 @@ use clap::Clap;
 use errors::Error;
 
 fn main() -> Result<()> {
-	let cli::Opts { system, guid } = cli::Opts::parse();
+	let cli::Opts { device, guid } = cli::Opts::parse();
 
-	reader::Reader::new(&system, guid)
+	reader::Reader::new(&device, guid)
 		.context("Failed to create Reader")?
 		.run()?;
 

@@ -8,7 +8,7 @@ pub(crate) use table::Table;
 pub(crate) struct Opts {
 	#[clap(short, long, default_value = "/dev/sda")]
 	/// Block device to read GPT from
-	pub(crate) system: String,
+	pub(crate) device: String,
 
 	#[clap(short, long)]
 	/// Show GUID of each partition

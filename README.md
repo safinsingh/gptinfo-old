@@ -46,7 +46,7 @@ FLAGS:
     -V, --version    Prints version information
 
 OPTIONS:
-    -s, --system <system>    Block device to read GPT from [default: /dev/sda]
+    -d, --device <device>    Block device to read GPT from [default: /dev/sda]
 ```
 
 ## 🔮 Contributing
