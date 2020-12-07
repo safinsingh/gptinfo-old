@@ -22,8 +22,13 @@ struct PartitionEntry {
 	kind_p2: [u8; 2],
 	kind_p3: [u8; 2],
 	kind_p4: [u8; 8],
-	// Ignore unique GID
-	_offset: [u8; 16],
+	// 5-part unique guid??? idek its like weird or smthn
+	ukind_p1: [u8; 4],
+	ukind_p2: [u8; 2],
+	ukind_p3: [u8; 2],
+	ukind_p4: [u8; 2],
+	ukind_p5: [u8; 6],
+	// lba ptr thingies
 	first_lba: [u8; 8],
 	last_lba: [u8; 8],
 	// Ignore flags
@@ -66,23 +71,23 @@ fn guid_from_bytes(
 ) -> String {
 	let mut guid = String::new();
 	for ch in kind_p1 {
-		guid.push_str(&format!("{:x}", ch));
+		guid.push_str(&format!("{:01$x?}", ch, 2));
 	}
 	guid.push('-');
 	for ch in kind_p2 {
-		guid.push_str(&format!("{:x}", ch));
+		guid.push_str(&format!("{:01$x?}", ch, 2));
 	}
 	guid.push('-');
 	for ch in kind_p3 {
-		guid.push_str(&format!("{:x}", ch));
+		guid.push_str(&format!("{:01$x?}", ch, 2));
 	}
 	guid.push('-');
 	for ch in kind_p4 {
-		guid.push_str(&format!("{:x}", ch));
+		guid.push_str(&format!("{:01$x?}", ch, 2));
 	}
 	guid.push('-');
 	for ch in kind_p5 {
-		guid.push_str(&format!("{:x}", ch));
+		guid.push_str(&format!("{:01$x?}", ch, 2));
 	}
 	guid.to_ascii_uppercase()
 }
@@ -111,7 +116,7 @@ impl ReaderKind {
 					// Begin disk section
 					writer.push_cell("Name".bold());
 					if OPTS.guid {
-						writer.push_cell("GUID".bold());
+						writer.push_cell("Unique GUID".bold());
 					}
 
 					writer.push_cells(vec![
@@ -177,17 +182,31 @@ impl ReaderKind {
 					&entry.kind_p4,
 				)?;
 
-				if kind.0 != UNUSED_PARTITION {
+				if kind != UNUSED_PARTITION {
 					let start = u64::from_le_bytes(entry.first_lba);
 					let end = u64::from_le_bytes(entry.last_lba);
 
 					writer.push_cell(string_from_bytes(&entry.name)?);
 					if OPTS.guid {
-						writer.push_cell(kind.1.into());
+						entry.ukind_p1.reverse();
+						entry.ukind_p2.reverse();
+						entry.ukind_p3.reverse();
+
+						writer.push_cell(
+							guid_from_bytes(
+								&entry.ukind_p1,
+								&entry.ukind_p2,
+								&entry.ukind_p3,
+								&entry.ukind_p4,
+								&entry.ukind_p5,
+							)
+							.as_str()
+							.into(),
+						);
 					}
 
 					writer.push_cells(vec![
-						kind.0.into(),
+						kind.into(),
 						start.to_string().as_str().into(),
 						end.to_string().as_str().into(),
 						(end - start + 1).to_string().as_str().into(),
