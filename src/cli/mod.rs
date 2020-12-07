@@ -1,3 +1,5 @@
+pub mod table;
+
 use clap::Clap;
 
 #[derive(Clap)]

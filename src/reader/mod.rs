@@ -1,6 +1,10 @@
-use crate::{errors::Error, guids, table::Table, OPTS};
+mod bytes;
+mod header;
+mod partition;
+
+use crate::{cli::table::Table, errors::Error, guid, OPTS};
 use anyhow::{Context as _, Result};
-use colored::{ColoredString, Colorize};
+use colored::Colorize;
 use std::{fs::File, os::unix::fs::FileExt};
 
 const MBR_OFFSET: u16 = 512;
@@ -10,86 +14,6 @@ const UNUSED_PARTITION: &str = "Unused entry";
 pub(crate) enum ReaderKind {
 	Header,
 	Entry,
-}
-
-#[repr(C)]
-#[derive(Debug)]
-struct PartitionEntry {
-	// A GUID contains 4 "parts" in this order: 4 bytes, 2 byte, 2 byte, 8
-	// However, they are read as little endian, so we must reverse
-	// these in place (kind of. guids are stupid)
-	kind_p1: [u8; 4],
-	kind_p2: [u8; 2],
-	kind_p3: [u8; 2],
-	kind_p4: [u8; 8],
-	// 5-part unique guid??? idek its like weird or smthn
-	ukind_p1: [u8; 4],
-	ukind_p2: [u8; 2],
-	ukind_p3: [u8; 2],
-	ukind_p4: [u8; 2],
-	ukind_p5: [u8; 6],
-	// lba ptr thingies
-	first_lba: [u8; 8],
-	last_lba: [u8; 8],
-	// Ignore flags
-	_offset2: [u8; 8],
-	name: [u8; 72],
-}
-
-#[repr(C)]
-#[derive(Debug)]
-struct HeaderEntry {
-	signature: [u8; 8],
-	// stuff we dont need
-	_offset: [u8; 32],
-	// first/last usable lbas
-	first_lba: [u8; 8],
-	last_lba: [u8; 8],
-	// 5-part disk guid??? idek its like weird or smthn
-	kind_p1: [u8; 4],
-	kind_p2: [u8; 2],
-	kind_p3: [u8; 2],
-	kind_p4: [u8; 2],
-	kind_p5: [u8; 6],
-}
-
-fn string_from_bytes(bytes: &[u8; 72]) -> Result<ColoredString> {
-	let (front, slice, back) = unsafe { bytes.align_to::<u16>() };
-	if front.is_empty() && back.is_empty() {
-		Ok(ColoredString::from(String::from_utf16(slice)?.as_str()))
-	} else {
-		Err(Error::UTF16.into())
-	}
-}
-
-fn guid_from_bytes(
-	kind_p1: &[u8; 4],
-	kind_p2: &[u8; 2],
-	kind_p3: &[u8; 2],
-	kind_p4: &[u8; 2],
-	kind_p5: &[u8; 6],
-) -> String {
-	let mut guid = String::new();
-	for ch in kind_p1 {
-		guid.push_str(&format!("{:01$x?}", ch, 2));
-	}
-	guid.push('-');
-	for ch in kind_p2 {
-		guid.push_str(&format!("{:01$x?}", ch, 2));
-	}
-	guid.push('-');
-	for ch in kind_p3 {
-		guid.push_str(&format!("{:01$x?}", ch, 2));
-	}
-	guid.push('-');
-	for ch in kind_p4 {
-		guid.push_str(&format!("{:01$x?}", ch, 2));
-	}
-	guid.push('-');
-	for ch in kind_p5 {
-		guid.push_str(&format!("{:01$x?}", ch, 2));
-	}
-	guid.to_ascii_uppercase()
 }
 
 impl ReaderKind {
@@ -103,8 +27,9 @@ impl ReaderKind {
 			Self::Header => {
 				// SAFETY: guaranteed to be safe because we guarantee the layout
 				// of the struct
-				let entry =
-					unsafe { &mut *(bytes.as_ptr() as *mut HeaderEntry) };
+				let entry = unsafe {
+					&mut *(bytes.as_ptr() as *mut header::HeaderEntry)
+				};
 
 				// Magic signature in the first 8 bytes of LBA1 to verify EFI
 				// system integrity
@@ -138,7 +63,7 @@ impl ReaderKind {
 					writer.push_cell(format!("Disk ({})", loc).as_str().into());
 					if OPTS.guid {
 						writer.push_cell(
-							guid_from_bytes(
+							bytes::guid_from_bytes(
 								&entry.kind_p1,
 								&entry.kind_p2,
 								&entry.kind_p3,
@@ -155,7 +80,7 @@ impl ReaderKind {
 						start.to_string().as_str().into(),
 						end.to_string().as_str().into(),
 						(end - start + 1).to_string().as_str().into(),
-						format_bytes(end, start).as_str().into(),
+						bytes::format_bytes(end, start).as_str().into(),
 					]);
 					Ok(())
 				} else {
@@ -165,8 +90,9 @@ impl ReaderKind {
 			Self::Entry => {
 				// SAFETY: guaranteed to be safe because we guarantee the layout
 				// of the struct
-				let entry =
-					unsafe { &mut *(bytes.as_ptr() as *mut PartitionEntry) };
+				let entry = unsafe {
+					&mut *(bytes.as_ptr() as *mut partition::PartitionEntry)
+				};
 
 				// account for endianness
 				entry.kind_p1.reverse();
@@ -175,7 +101,7 @@ impl ReaderKind {
 				entry.kind_p4.reverse();
 
 				// Get partition type from GUID
-				let kind = guids::match_partition_guid(
+				let kind = guid::match_partition_guid(
 					&entry.kind_p1,
 					&entry.kind_p2,
 					&entry.kind_p3,
@@ -186,14 +112,14 @@ impl ReaderKind {
 					let start = u64::from_le_bytes(entry.first_lba);
 					let end = u64::from_le_bytes(entry.last_lba);
 
-					writer.push_cell(string_from_bytes(&entry.name)?);
+					writer.push_cell(bytes::string_from_bytes(&entry.name)?);
 					if OPTS.guid {
 						entry.ukind_p1.reverse();
 						entry.ukind_p2.reverse();
 						entry.ukind_p3.reverse();
 
 						writer.push_cell(
-							guid_from_bytes(
+							bytes::guid_from_bytes(
 								&entry.ukind_p1,
 								&entry.ukind_p2,
 								&entry.ukind_p3,
@@ -210,42 +136,12 @@ impl ReaderKind {
 						start.to_string().as_str().into(),
 						end.to_string().as_str().into(),
 						(end - start + 1).to_string().as_str().into(),
-						format_bytes(end, start).as_str().into(),
+						bytes::format_bytes(end, start).as_str().into(),
 					]);
 				}
 				Ok(())
 			}
 		}
-	}
-}
-
-fn format_bytes(end: u64, start: u64) -> String {
-	let raw = (end - start + 1) * 512;
-	match raw {
-		// 1024 bytes in a MB
-		1..=1023 => {
-			format!("{}B", raw)
-		}
-		// 1048576 bytes in a KB
-		1024..=1048575 => {
-			format!("{}K", raw / 1024)
-		}
-		// 1073741824 bytes in a GB
-		1048576..=1073741823 => {
-			format!("{}M", raw / 1024 / 1024)
-		}
-		// 1099511627776 bytes in a TB
-		1073741824..=1099511627775 => {
-			format!("{}G", raw / 1024 / 1024 / 1024)
-		}
-		// 1125899906842624 bytes in a PB
-		1099511627776..=1125899906842624 => {
-			format!("{}T", raw / 1024 / 1024 / 1024 / 1024)
-		}
-		// if you have more than 1023 terabytes of
-		// storage... go do something useful instead
-		// of reading this
-		x => panic!("a meaningful error {}", x),
 	}
 }
 

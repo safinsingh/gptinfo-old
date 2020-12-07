@@ -2,9 +2,8 @@
 mod macros;
 mod cli;
 mod errors;
-mod guids;
+mod guid;
 mod reader;
-mod table;
 
 use anyhow::{Context as _, Result};
 use clap::Clap;
