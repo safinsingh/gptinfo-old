@@ -51,6 +51,7 @@ impl Table {
 
 		// Draw top
 		print!("╭");
+		// Clone :(
 		for (col, width) in col_widths.clone().into_iter().enumerate() {
 			for _ in 0..width + 2 {
 				print!("─");
@@ -75,7 +76,7 @@ impl Table {
 		}
 		// Draw bottom
 		print!("\n╰");
-		for (col, width) in col_widths.clone().into_iter().enumerate() {
+		for (col, width) in col_widths.into_iter().enumerate() {
 			for _ in 0..width + 2 {
 				print!("─");
 			}
@@ -83,6 +84,6 @@ impl Table {
 				print!("┴");
 			}
 		}
-		print!("╯\n");
+		println!("╯");
 	}
 }

@@ -12,8 +12,8 @@ pub(crate) enum Error {
 	UnrecognizedGUID,
 
 	#[error("Cannot display non-UTF8 UTF16 characters")]
-	UTF16Error,
+	UTF16,
 
 	#[error("This binary must be run as root")]
-	RootError,
+	Root,
 }

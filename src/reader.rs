@@ -36,7 +36,7 @@ fn string_from_bytes(bytes: &[u8; 72]) -> Result<ColoredString> {
 	if front.is_empty() && back.is_empty() {
 		Ok(ColoredString::from(String::from_utf16(slice)?.as_str()))
 	} else {
-		Err(Error::UTF16Error.into())
+		Err(Error::UTF16.into())
 	}
 }
 
@@ -65,9 +65,9 @@ impl ReaderKind {
 						"Size".bold(),
 					]);
 
-					return Ok(());
+					Ok(())
 				} else {
-					return Err(Error::InvalidSignature.into());
+					Err(Error::InvalidSignature.into())
 				}
 			}
 			Self::Entry => {

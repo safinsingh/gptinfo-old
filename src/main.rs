@@ -18,7 +18,7 @@ lazy_static! {
 
 fn main() -> Result<()> {
 	if !Uid::effective().is_root() {
-		return Err(Error::RootError.into());
+		return Err(Error::Root.into());
 	}
 
 	reader::Reader::new(&*OPTS.system)
