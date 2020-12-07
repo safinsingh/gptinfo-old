@@ -1,7 +1,7 @@
 <h1 align="center">gptinfo</h1>
 
 <p align="center">
-    <i>A CLI app to analyze partition tables</i>
+    <i>A CLI tool to analyze partition tables</i>
     <hr />
 </p>
 
