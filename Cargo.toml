@@ -3,6 +3,11 @@ authors = ["Safin Singh <safinsingh.dev@gmail.com>"]
 edition = "2018"
 name = "gptinfo"
 version = "1.0.0"
+license = "MPLv2.0"
+description = "A CLI app to analyze partition tables "
+repository = "https://github.com/safinsingh/gptinfo"
+readme = "README.md"
+keywords = ["gpt", "partition-tables"]
 
 [dependencies]
 anyhow = "1.0.34"
