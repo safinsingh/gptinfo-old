@@ -79,7 +79,7 @@ impl ReaderKind {
 						"Block Device".into(),
 						start.to_string().as_str().into(),
 						end.to_string().as_str().into(),
-						(end - start + 1).to_string().as_str().into(),
+						(end + start).to_string().as_str().into(),
 						bytes::format_bytes(end, start).as_str().into(),
 					]);
 					Ok(())
