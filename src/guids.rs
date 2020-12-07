@@ -1,5 +1,7 @@
 use crate::errors::Error;
+
 use anyhow::Result;
+
 pub(crate) fn match_partition_guid<'a>(
 	kind_p1: &[u8; 4],
 	kind_p2: &[u8; 2],
