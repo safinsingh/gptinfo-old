@@ -177,10 +177,10 @@ impl<'a> Reader<'a> {
 		let offset = MBR_OFFSET + entry_size * (self.lba - 1);
 
 		File::open(self.loc)
-			.context("Failed to open EFI system for reading")?
+			.context("Failed to open GPT entry for reading")?
 			.read_at(&mut self.bytes, offset.into())
 			.with_context(|| {
-				format!("Failed read EFI system at offset: {}b", offset)
+				format!("Failed read GPT entry at offset: {}b", offset)
 			})?;
 
 		match self.lba {

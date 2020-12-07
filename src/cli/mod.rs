@@ -7,7 +7,7 @@ pub(crate) use table::Table;
 #[clap(version = "1.0", author = "Safin S. <safinsingh.dev@gmail.com>")]
 pub(crate) struct Opts {
 	#[clap(short, long, default_value = "/dev/sda")]
-	/// EFI System to read from
+	/// Block device to read GPT from
 	pub(crate) system: String,
 
 	#[clap(short, long)]
