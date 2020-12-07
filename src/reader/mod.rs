@@ -2,9 +2,10 @@ mod bytes;
 mod header;
 mod partition;
 
-use crate::{cli::table::Table, errors::Error, guid, OPTS};
+use crate::{cli::Table, errors::Error, guid};
 use anyhow::{Context as _, Result};
 use colored::Colorize;
+use nix::unistd::Uid;
 use std::{fs::File, os::unix::fs::FileExt};
 
 const MBR_OFFSET: u16 = 512;
@@ -22,6 +23,7 @@ impl ReaderKind {
 		bytes: &mut [u8; 512],
 		loc: &str,
 		writer: &mut Table,
+		guid: bool,
 	) -> Result<()> {
 		match self {
 			Self::Header => {
@@ -36,11 +38,9 @@ impl ReaderKind {
 				let signature = u64::from_le_bytes(entry.signature);
 
 				if signature == GPT_HEADER_SIG {
-					log!("Validated signature of GPT header");
-
 					// Begin disk section
 					writer.push_cell("Name".bold());
-					if OPTS.guid {
+					if guid {
 						writer.push_cell("Unique GUID".bold());
 					}
 
@@ -61,7 +61,7 @@ impl ReaderKind {
 					entry.kind_p3.reverse();
 
 					writer.push_cell(format!("Disk ({})", loc).as_str().into());
-					if OPTS.guid {
+					if guid {
 						writer.push_cell(
 							bytes::guid_from_bytes(
 								&entry.kind_p1,
@@ -113,7 +113,7 @@ impl ReaderKind {
 					let end = u64::from_le_bytes(entry.last_lba);
 
 					writer.push_cell(bytes::string_from_bytes(&entry.name)?);
-					if OPTS.guid {
+					if guid {
 						entry.ukind_p1.reverse();
 						entry.ukind_p2.reverse();
 						entry.ukind_p3.reverse();
@@ -150,15 +150,21 @@ pub(crate) struct Reader<'a> {
 	lba: u16,
 	bytes: [u8; 512],
 	writer: Table,
+	guid: bool,
 }
 
 impl<'a> Reader<'a> {
-	pub(crate) fn new(loc: &'a str) -> Result<Reader<'a>> {
+	pub(crate) fn new(loc: &'a str, guid: bool) -> Result<Reader<'a>> {
+		if !Uid::effective().is_root() {
+			return Err(Error::Root.into());
+		}
+
 		Ok(Self {
 			loc,
 			lba: 1,
 			bytes: [0u8; 512],
-			writer: Table::new(if OPTS.guid { 7 } else { 6 }),
+			writer: Table::new(if guid { 7 } else { 6 }),
+			guid,
 		})
 	}
 
@@ -186,7 +192,12 @@ impl<'a> Reader<'a> {
 
 	pub(crate) fn run(mut self) -> Result<()> {
 		while let Ok(mut reader) = self.read() {
-			reader.analyze(&mut self.bytes, self.loc, &mut self.writer)?;
+			reader.analyze(
+				&mut self.bytes,
+				self.loc,
+				&mut self.writer,
+				self.guid,
+			)?;
 			self.lba += 1;
 		}
 
