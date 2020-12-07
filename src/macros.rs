@@ -1,6 +1,6 @@
 macro_rules! log {
     ($($arg:tt)*) => (
-        if !crate::OPTS.quiet {
+        if crate::OPTS.verbose {
             println!("{} {}!", "[ LOG ]".yellow().bold(), format_args!($($arg)*))
         }
     )

@@ -8,6 +8,10 @@ pub(crate) struct Opts {
 	pub(crate) system: String,
 
 	#[clap(short, long)]
-	/// Run `gptinfo` in quiet mode
-	pub(crate) quiet: bool,
+	/// Run `gptinfo` in verbose mode
+	pub(crate) verbose: bool,
+
+	#[clap(short, long)]
+	/// Show GUID of each partition
+	pub(crate) guid: bool,
 }
